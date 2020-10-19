@@ -1,0 +1,72 @@
+---
+title: "Grant related materials"
+author: "Xinyi Lin"
+date: "10/12/2020"
+output: word_document
+---
+
+
+```{r include = FALSE}
+knitr::opts_chunk$set(echo=FALSE,warning = FALSE, message = FALSE)
+```
+
+```{r}
+library(tidyverse)
+```
+
+* scRNA-seq data number about human cancer
+
+I also checked other public dataset for scRNA-seq and I found out NCBI is the most up-to-date one.
+
+Using "Homo sapiens", "scRNA-seq", "tumor" or "cancer" as key word to search on NCBI, we can get 101 Bioproject records, 141 Biosample and 12668 SRA records. I failed to extract date for these records.
+
+* High-impact papers which give examples of workflow
+
+Please check the file "Publications Info.xlsl".
+
+* Others
+
+The panglaoDB(https://panglaodb.se/index.html) extracts papers related to single cell sequencing from PubMed, and the paper list is updated every 24 hours. The following table shows numbers of papers which are related to single cell sequencing published every season since 2016. The red part indicates papers that are not related to cancer/tumor and the blue part indicates papers that are related to cancer/tumor.
+
+```{r}
+library(readxl)
+paper_info <- read_excel("data/paper_info.xlsx") %>% 
+  janitor::clean_names() %>% 
+  separate(pub_date, c("year", "month", "day"), "-") %>% 
+  mutate(month = as.numeric(month)) %>% 
+  mutate(season = ifelse(month<=3, "01-03", "09-12"),
+         season = ifelse(3<month&month<=6, "03-06", season),
+         season = ifelse(7<month&month<=9, "07-09", season)) %>% 
+  mutate(Date = str_c(year, season, sep = "/"))
+```
+
+```{r}
+paper_info = 
+  paper_info %>% 
+  mutate(cancer_related = (str_detect(title, "[Cc]ancer") | str_detect(title, "[Tt]umor")),
+         cancer_related = ifelse(cancer_related == FALSE, "No", "Yes"))
+```
+
+```{r, fig.width=7, fig.height=4}
+paper_info_count = paper_info %>%
+  filter(year > 2015 & year < 2021) %>% 
+  group_by(Date, cancer_related) %>% 
+  summarise(numbers = n()) 
+
+paper_info_count %>% 
+  ggplot(aes(x = Date, y = numbers))+
+  geom_bar(stat="identity",aes(fill = cancer_related))+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1)) +
+  ylab("Numbers of Publications") + 
+  scale_fill_discrete(name="Cancer\nRelated")
+```
+
+The percentages of cancer related papers in each period are as following.
+
+```{r}
+paper_info_count %>% 
+  pivot_wider(names_from = cancer_related, values_from = numbers) %>% 
+  mutate(Yes_percent = round(Yes/(No+Yes)*100, 2)) %>% 
+  knitr::kable()
+```
+
